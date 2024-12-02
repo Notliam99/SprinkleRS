@@ -1,0 +1,135 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESP-RS JSON Post Handler</title>
+    <style type="text/css">
+        body {
+            max-width: 50em;
+            margin: auto;
+            padding: 1em;
+            font: 1em/1.65 sans-serif;
+        }
+
+        input {
+            width: 100%;
+            height: 3em;
+            margin-bottom: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <form id="the-form" method="post" accept-charset="utf-8">
+        <!-- Zone 1 -->
+        <label for="zone1" id="zone1-label">Zone-1</label>
+        <input type="checkbox" id="zone1" name="zone1" value="true"><br>
+        <!-- Zone 2 -->
+        <label for="zone2" id="zone2-label">Zone-2</label>
+        <input type="checkbox" id="zone2" name="zone2" value="true"><br>
+        <!-- Zone 3 -->
+        <label for="zone3" id="zone3-label">Zone-3</label>
+        <input type="checkbox" id="zone3" name="zone3" value="true"><br>
+        <!-- Zone 4 -->
+        <label for="zone4" id="zone4-label">Zone-4</label>
+        <input type="checkbox" id="zone4" name="zone4" value="true"><br>
+        <!-- Submit -->
+        <input type="submit" value="Submit">
+    </form>
+    <p id="server-resp"></p>
+    <script type="text/javascript">
+        let theForm = document.getElementById("the-form");
+        let serverResp = document.getElementById("server-resp");
+
+        let zones = {
+            zone1: false,
+            zone2: false,
+            zone3: false,
+            zone4: false
+        };
+
+        // set the curent zone status to form
+        function set_zone_form(form, zones) {
+            let zone_names = ["zone1", "zone2", "zone3", "zone4"];
+
+            form.elements["zone1"].value = zones.zone1;
+            form.elements["zone2"].value = zones.zone2;
+            form.elements["zone3"].value = zones.zone3;
+            form.elements["zone4"].value = zones.zone4;
+
+            for (let i = 0; i < zone_names.length; i++) {
+                form.elements[zone_names[i]].checked = (form.elements[zone_names[i]].value === "true" ? true : false);
+            }
+        }
+
+        // Fetch the initial zone states from the server
+        async function fetchZones() {
+            try {
+                const response = await fetch("/zones", {
+                    method: "GET", // Use uppercase "GET"
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Response status: ${response.status}`);
+                }
+
+                // Await the JSON response
+                zones_respose = await response.json();
+                console.log(zones_respose);
+                zones = zones_respose
+
+                set_zone_form(theForm, zones);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Call the function to fetch zones
+        fetchZones();
+
+        // Function to update zones based on form input
+        function updateZones(form) {
+            let entries = Object.fromEntries(new FormData(form).entries());
+
+            return {
+                zone1: (entries.zone1 ? true : false),
+                zone2: (entries.zone2 ? true : false),
+                zone3: (entries.zone3 ? true : false),
+                zone4: (entries.zone4 ? true : false),
+            };
+        }
+
+        theForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            let form = e.currentTarget;
+
+            try {
+                // Update the zones based on form entries
+                zones = updateZones(form);
+
+                // Log the updated zones for debugging
+                console.log(zones);
+
+                let resp = await fetch("/zones", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: JSON.stringify(zones), // Send the updated zones
+                });
+
+                // Display server response
+                serverResp.innerText = await resp.text();
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
